@@ -1592,7 +1592,7 @@ void OSDService::reply_op_error(OpRequestRef op, int err, eversion_t v,
   flags = m->get_flags() & (CEPH_OSD_FLAG_ACK|CEPH_OSD_FLAG_ONDISK);
 
   MOSDOpReply *reply = new MOSDOpReply(m, err, osdmap->get_epoch(), flags,
-				       true);
+				       true, op->qos_resp);
   reply->set_reply_versions(v, uv);
   m->get_connection()->send_message(reply);
 }
@@ -9855,6 +9855,9 @@ void OSD::ShardedOpWQ::_process(uint32_t thread_index, heartbeat_handle_d *hb)
   if (osd->is_stopping()) {
     sdata->sdata_op_ordering_lock.Unlock();
     return;    // OSD shutdown, discard.
+  }
+  if (boost::optional<OpRequestRef> _op = item.second.maybe_get_op()) {
+    (*_op)->qos_resp = item.second.get_qos_resp();
   }
   PGRef pg;
   uint64_t requeue_seq;

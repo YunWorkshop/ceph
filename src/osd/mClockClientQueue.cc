@@ -161,6 +161,8 @@ namespace ceph {
 
   // Return an op to be dispatched
   inline Request mClockClientQueue::dequeue() {
-    return queue.dequeue();
+    std::pair<Request, dmc::PhaseType> retn = queue._dequeue();
+    retn.first.second.set_qos_resp(retn.second);
+    return retn.first;
   }
 } // namespace ceph
