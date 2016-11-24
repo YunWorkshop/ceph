@@ -20,7 +20,7 @@
 #include "include/ceph_features.h"
 #include "common/hobject.h"
 #include <atomic>
-
+#include "common/mClockCommon.h"
 /*
  * OSD op
  *
@@ -61,6 +61,7 @@ private:
   uint64_t features;
 
   osd_reqid_t reqid; // reqid explicitly set by sender
+  dmc::ReqParams qos_params;
 
 public:
   friend class MOSDOpReply;
@@ -79,6 +80,7 @@ public:
   void set_spg(spg_t p) {
     pgid = p;
   }
+  void set_qos_params(const dmc::ReqParams& p) { qos_params = p; }
 
   // Fields decoded in partial decoding
   pg_t get_pg() const {
@@ -112,6 +114,10 @@ public:
                          reqid.inc,
 			 header.tid);
     }
+  }
+  const dmc::ReqParams& get_qos_params() const {
+    assert(!partial_decode_needed);
+    return qos_params;
   }
 
   // Fields decoded in final decoding
