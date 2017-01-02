@@ -1200,6 +1200,9 @@ void pg_pool_t::dump(Formatter *f) const
   f->dump_bool("fast_read", fast_read);
   f->open_object_section("options");
   opts.dump(f);
+  f->dump_float("mclock_res", get_mclock_res());
+  f->dump_float("mclock_wgt", get_mclock_wgt());
+  f->dump_float("mclock_lim", get_mclock_lim());
   f->close_section(); // options
 }
 
@@ -1500,7 +1503,7 @@ void pg_pool_t::encode(bufferlist& bl, uint64_t features) const
     return;
   }
 
-  uint8_t v = 25;
+  uint8_t v = 26;
   if (!(features & CEPH_FEATURE_NEW_OSDOP_ENCODING)) {
     // this was the first post-hammer thing we added; if it's missing, encode
     // like hammer.
@@ -1576,12 +1579,17 @@ void pg_pool_t::encode(bufferlist& bl, uint64_t features) const
   if (v >= 25) {
     ::encode(last_force_op_resend, bl);
   }
+  if (v >= 26) {
+    ::encode(mclock_res, bl);
+    ::encode(mclock_wgt, bl);
+    ::encode(mclock_lim, bl);
+  }
   ENCODE_FINISH(bl);
 }
 
 void pg_pool_t::decode(bufferlist::iterator& bl)
 {
-  DECODE_START_LEGACY_COMPAT_LEN(25, 5, 5, bl);
+  DECODE_START_LEGACY_COMPAT_LEN(26, 5, 5, bl);
   ::decode(type, bl);
   ::decode(size, bl);
   ::decode(crush_rule, bl);
@@ -1728,6 +1736,15 @@ void pg_pool_t::decode(bufferlist::iterator& bl)
   } else {
     last_force_op_resend = last_force_op_resend_preluminous;
   }
+  if (struct_v >= 26) {
+    ::decode(mclock_res, bl);
+    ::decode(mclock_wgt, bl);
+    ::decode(mclock_lim, bl);
+  } else {
+    mclock_res = 1000.0;
+    mclock_wgt = 500.0;
+    mclock_lim = 0.0;
+  }
   DECODE_FINISH(bl);
   calc_pg_masks();
   calc_grade_table();
@@ -1791,6 +1808,9 @@ void pg_pool_t::generate_test_instances(list<pg_pool_t*>& o)
   a.erasure_code_profile = "profile in osdmap";
   a.expected_num_objects = 123456;
   a.fast_read = false;
+  a.mclock_res = 1000.0;
+  a.mclock_wgt = 500.0;
+  a.mclock_lim = 0.0;
   o.push_back(new pg_pool_t(a));
 }
 
@@ -1849,6 +1869,9 @@ ostream& operator<<(ostream& out, const pg_pool_t& p)
   if (p.fast_read)
     out << " fast_read " << p.fast_read;
   out << p.opts;
+  out << " mclock_res " << p.get_mclock_res()
+      << " mclock_wgt " << p.get_mclock_wgt()
+      << " mclock_lim " << p.get_mclock_lim();
   return out;
 }
 

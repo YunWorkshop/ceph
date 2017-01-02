@@ -725,6 +725,9 @@ OPTION(osd_pool_default_cache_target_full_ratio, OPT_FLOAT, .8)
 OPTION(osd_pool_default_cache_min_flush_age, OPT_INT, 0)  // seconds
 OPTION(osd_pool_default_cache_min_evict_age, OPT_INT, 0)  // seconds
 OPTION(osd_pool_default_cache_max_evict_check_size, OPT_INT, 10)  // max size to check for eviction
+OPTION(osd_pool_default_mclock_res, OPT_DOUBLE, 1000.0)
+OPTION(osd_pool_default_mclock_wgt, OPT_DOUBLE, 500.0)
+OPTION(osd_pool_default_mclock_lim, OPT_DOUBLE, 0.0)
 OPTION(osd_hit_set_min_size, OPT_INT, 1000)  // min target size for a HitSet
 OPTION(osd_hit_set_max_size, OPT_INT, 100000)  // max target size for a HitSet
 OPTION(osd_hit_set_namespace, OPT_STR, ".ceph-internal") // rados namespace for hit_set tracking
