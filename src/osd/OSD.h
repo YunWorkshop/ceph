@@ -1616,9 +1616,12 @@ private:
    */
   friend class PGQueueable;
 
+public:
   class ShardedOpWQ
     : public ShardedThreadPool::ShardedWQ<pair<spg_t,PGQueueable>>
   {
+
+  public:
     struct ShardData {
       Mutex sdata_lock;
       Cond sdata_cond;
@@ -1695,7 +1698,6 @@ private:
     OSD *osd;
     uint32_t num_shards;
 
-  public:
     ShardedOpWQ(uint32_t pnum_shards,
 		OSD *o,
 		time_t ti,
@@ -1718,6 +1720,7 @@ private:
 	  ceph::mClockPoolQueue* pq = 
 	    dynamic_cast<ceph::mClockPoolQueue *>(one_shard->pqueue.get());
 	  pq->set_mclock_service(&(osd->service));
+	  pq->get_queue().set_sched_queue(i);
 	}
 	shard_list.push_back(one_shard);
       }

@@ -71,6 +71,7 @@ class PGQueueable {
   epoch_t map_epoch;    ///< an epoch we expect the PG to exist in
   dmc::ReqParams qos_params;
   dmc::PhaseType qos_resp;
+  dmc::NextReqType type;
 
   struct RunVis : public boost::static_visitor<> {
     OSD *osd;
@@ -114,7 +115,8 @@ public:
       start_time(op->get_req()->get_recv_stamp()),
       owner(op->get_req()->get_source_inst()),
       map_epoch(e),
-      qos_resp(dmc::PhaseType::reservation)
+      qos_resp(dmc::PhaseType::reservation),
+      type(dmc::NextReqType::returning)
   {
     if (op->get_req()->get_type() == CEPH_MSG_OSD_OP) {
       MOSDOp *m = static_cast<MOSDOp*>(op->get_nonconst_req());
@@ -125,17 +127,22 @@ public:
     const PGSnapTrim &op, int cost, unsigned priority, utime_t start_time,
     const entity_inst_t &owner, epoch_t e)
     : qvariant(op), cost(cost), priority(priority), start_time(start_time),
-      owner(owner), map_epoch(e), qos_resp(dmc::PhaseType::reservation) {}
+      owner(owner), map_epoch(e), qos_resp(dmc::PhaseType::reservation),
+      type(dmc::NextReqType::returning) {}
   PGQueueable(
     const PGScrub &op, int cost, unsigned priority, utime_t start_time,
     const entity_inst_t &owner, epoch_t e)
     : qvariant(op), cost(cost), priority(priority), start_time(start_time),
-      owner(owner), map_epoch(e), qos_resp(dmc::PhaseType::reservation) {}
+      owner(owner), map_epoch(e), qos_resp(dmc::PhaseType::reservation),
+      type(dmc::NextReqType::returning) {}
   PGQueueable(
     const PGRecovery &op, int cost, unsigned priority, utime_t start_time,
     const entity_inst_t &owner, epoch_t e)
     : qvariant(op), cost(cost), priority(priority), start_time(start_time),
-      owner(owner), map_epoch(e), qos_resp(dmc::PhaseType::reservation) {}
+      owner(owner), map_epoch(e), qos_resp(dmc::PhaseType::reservation),
+      type(dmc::NextReqType::returning) {}
+  PGQueueable(dmc::NextReqType t)
+    : type(t) {}
 
   const boost::optional<OpRequestRef> maybe_get_op() const {
     const OpRequestRef *op = boost::get<OpRequestRef>(&qvariant);
@@ -157,5 +164,6 @@ public:
   const QVariant& get_variant() const { return qvariant; }
   dmc::ReqParams get_qos_params() const { return qos_params; }
   dmc::PhaseType get_qos_resp() const { return qos_resp; }
+  dmc::NextReqType get_next_req_type() const { return type; }
   void set_qos_resp(dmc::PhaseType qresp) { qos_resp = qresp; }
 }; // struct PGQueueable

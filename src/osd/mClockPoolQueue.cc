@@ -82,6 +82,18 @@ namespace ceph {
     }
   }
 
+  void mClockPoolQueue::sched_notify_f(const uint32_t shard_index)
+  {
+    OSD::ShardedOpWQ *op_wq = 
+      static_cast<OSD::ShardedOpWQ *>(&(mclock_service->osd-> op_shardedwq));
+
+    OSD::ShardedOpWQ::ShardData* sdata = op_wq->shard_list[shard_index];
+
+    sdata->sdata_lock.Lock();
+    sdata->sdata_cond.SignalOne();
+    sdata->sdata_lock.Unlock();
+  }
+
 
   /*
    * class mClockPoolQueue
@@ -97,7 +109,9 @@ namespace ceph {
   mClockPoolQueue::pg_queueable_visitor;
 
   mClockPoolQueue::mClockPoolQueue(CephContext *cct) :
-    queue(&mClockPoolQueue::op_class_client_info_f)
+    queue(&mClockPoolQueue::op_class_client_info_f,
+	  cct->_conf->osd_op_queue_mclock_allow_limit_break,
+	  &mClockPoolQueue::sched_notify_f)
   {
     // manage the singleton
     if (!mclock_op_tags) {

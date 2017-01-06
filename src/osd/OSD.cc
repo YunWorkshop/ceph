@@ -9856,6 +9856,17 @@ void OSD::ShardedOpWQ::_process(uint32_t thread_index, heartbeat_handle_d *hb)
     sdata->sdata_op_ordering_lock.Unlock();
     return;    // OSD shutdown, discard.
   }
+  if (item.second.get_next_req_type() != dmc::NextReqType::returning) {
+    dout(20) << __func__ << " empty req, waiting" << dendl;
+    sdata->sdata_op_ordering_lock.Unlock();
+    osd->cct->get_heartbeat_map()->reset_timeout(hb,
+      osd->cct->_conf->threadpool_default_timeout, 0);
+    sdata->sdata_lock.Lock();
+    sdata->sdata_cond.WaitInterval(sdata->sdata_lock,
+      utime_t(osd->cct->_conf->threadpool_empty_queue_max_wait, 0));
+    sdata->sdata_lock.Unlock();
+    return;
+  }
   if (boost::optional<OpRequestRef> _op = item.second.maybe_get_op()) {
     (*_op)->qos_resp = item.second.get_qos_resp();
   }

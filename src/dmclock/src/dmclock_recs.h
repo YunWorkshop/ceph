@@ -19,6 +19,8 @@ namespace crimson {
 
     enum class PhaseType { reservation, priority };
 
+    enum class NextReqType { returning, future, none };
+
     inline std::ostream& operator<<(std::ostream& out, const PhaseType& phase) {
       out << (PhaseType::reservation == phase ? "reservation" : "priority");
       return out;

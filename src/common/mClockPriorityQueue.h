@@ -207,7 +207,7 @@ namespace ceph {
 
     SubQueues high_queue;
 
-    dmc::PullPriorityQueue<K,T> queue;
+    dmc::PullPriorityQueue<K,T,uint32_t> queue;
 
     // when enqueue_front is called, rather than try to re-calc tags
     // to put in mClock priority queue, we'll just keep a separate
@@ -218,10 +218,16 @@ namespace ceph {
   public:
 
     mClockQueue(
-      const typename dmc::PullPriorityQueue<K,T>::ClientInfoFunc& info_func) :
-      queue(info_func, true)
+      const typename dmc::PullPriorityQueue<K,T,uint32_t>::ClientInfoFunc& info_func,
+      bool allow_limit_break = false,
+      const typename dmc::PullPriorityQueue<K,T,uint32_t>::SchedNotifyFunc& notify_func = nullptr):
+      queue(info_func, allow_limit_break, notify_func)
     {
       // empty
+    }
+
+    void set_sched_queue(uint32_t _sched_queue) {
+      queue.set_sched_queue(_sched_queue);
     }
 
     unsigned length() const override final {
@@ -363,10 +369,21 @@ namespace ceph {
       }
 
       auto pr = queue.pull_request();
-      assert(pr.is_retn());
-      auto& retn = pr.get_retn();
-      resp_params = retn.phase;
-      return std::make_pair(*(retn.request), resp_params);
+      if (pr.is_retn()) {
+	auto& retn = pr.get_retn();
+	resp_params = retn.phase;
+	return std::make_pair(*(retn.request), resp_params);
+      } else if (pr.is_future()) {
+	auto time = pr.getTime();
+	queue.sched_at(time);
+	return std::make_pair(std::make_pair(spg_t(), PGQueueable(dmc::NextReqType::future)),
+	                      resp_params);
+      } else if (pr.is_none()) {
+	return std::make_pair(std::make_pair(spg_t(), PGQueueable(dmc::NextReqType::none)),
+	                      resp_params);
+      } else {
+	assert(false);
+      }
     }
 
     void dump(ceph::Formatter *f) const override final {
