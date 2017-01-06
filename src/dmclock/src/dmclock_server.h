@@ -1101,9 +1101,29 @@ namespace crimson {
     }; // class PriorityQueueBase
 
 
-    template<typename C, typename R, uint B=2>
+    template<typename C, typename R, typename Q=uint, uint B=2>
     class PullPriorityQueue : public PriorityQueueBase<C,R,B> {
+
+    protected:
+
       using super = PriorityQueueBase<C,R,B>;
+
+    public:
+
+      using SchedNotifyFunc = std::function<void(const Q&)>;
+
+    protected:
+
+      SchedNotifyFunc sched_notify_f;
+      Q               sched_queue;
+      // for handling timed scheduling
+      std::mutex  sched_ahead_mtx;
+      std::condition_variable sched_ahead_cv;
+      Time sched_ahead_when = TimeZero;
+
+      // NB: threads declared last, so constructed last and destructed first
+
+      std::thread sched_ahead_thd;
 
     public:
 
@@ -1140,25 +1160,41 @@ namespace crimson {
 			std::chrono::duration<Rep,Per> _idle_age,
 			std::chrono::duration<Rep,Per> _erase_age,
 			std::chrono::duration<Rep,Per> _check_time,
-			bool _allow_limit_break = false) :
+			bool _allow_limit_break = false,
+			SchedNotifyFunc _sched_notify_f = nullptr) :
 	super(_client_info_f,
 	      _idle_age, _erase_age, _check_time,
-	      _allow_limit_break)
+	      _allow_limit_break),
+	sched_notify_f(_sched_notify_f)
       {
-	// empty
+	sched_ahead_thd = std::thread(&PullPriorityQueue::run_sched_ahead, this);
       }
 
 
       // pull convenience constructor
       PullPriorityQueue(typename super::ClientInfoFunc _client_info_f,
-			bool _allow_limit_break = false) :
+			bool _allow_limit_break = false,
+			SchedNotifyFunc _sched_notify_f = nullptr) :
 	PullPriorityQueue(_client_info_f,
 			  std::chrono::minutes(10),
 			  std::chrono::minutes(15),
 			  std::chrono::minutes(6),
-			  _allow_limit_break)
+			  _allow_limit_break,
+			  _sched_notify_f)
       {
 	// empty
+      }
+
+
+      ~PullPriorityQueue() {
+	this->finishing = true;
+	sched_ahead_cv.notify_one();
+	sched_ahead_thd.join();
+      }
+
+
+      inline void set_sched_queue(Q _sched_queue) {
+	sched_queue = _sched_queue;
       }
 
 
@@ -1314,6 +1350,44 @@ namespace crimson {
       // specializations
       typename super::NextReq next_request() {
 	return next_request(get_time());
+      }
+
+
+      // this is the thread that handles running sched_notify_f at
+      // future times when nothing can be scheduled immediately
+      void run_sched_ahead() {
+	std::unique_lock<std::mutex> l(sched_ahead_mtx);
+
+	while (!this->finishing) {
+	  if (TimeZero == sched_ahead_when) {
+	    sched_ahead_cv.wait(l);
+	  } else {
+	    Time now;
+	    while (!this->finishing && (now = get_time()) < sched_ahead_when) {
+	      long microseconds_l = long(1 + 1000000 * (sched_ahead_when - now));
+	      auto microseconds = std::chrono::microseconds(microseconds_l);
+	      sched_ahead_cv.wait_for(l, microseconds);
+	    }
+	    sched_ahead_when = TimeZero;
+	    if (this->finishing) return;
+
+	    l.unlock();
+	    if (!this->finishing) {
+	      sched_notify_f(sched_queue);
+	    }
+	    l.lock();
+	  }
+	}
+      }
+
+    public:
+
+      void sched_at(Time when) {
+	std::lock_guard<std::mutex> l(sched_ahead_mtx);
+	if (TimeZero == sched_ahead_when || when < sched_ahead_when) {
+	  sched_ahead_when = when;
+	  sched_ahead_cv.notify_one();
+	}
       }
     }; // class PullPriorityQueue
 
