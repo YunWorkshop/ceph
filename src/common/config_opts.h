@@ -778,7 +778,7 @@ OPTION(osd_op_num_shards_ssd, OPT_INT, 8)
 // class the operation belongs to. "mclock_client" does the same but
 // also works to ienforce fairness between clients. "debug_random"
 // chooses among all four with equal probability.
-OPTION(osd_op_queue, OPT_STR, "wpq")
+OPTION(osd_op_queue, OPT_STR, "mclock_pool")
 
 OPTION(osd_op_queue_cut_off, OPT_STR, "low") // Min priority to go to strict queue. (low, high, debug_random)
 
