@@ -791,13 +791,13 @@ OPTION(osd_op_queue_mclock_osd_subop_wgt, OPT_DOUBLE, 500.0)
 OPTION(osd_op_queue_mclock_osd_subop_lim, OPT_DOUBLE, 0.0)
 OPTION(osd_op_queue_mclock_snap_res, OPT_DOUBLE, 0.0)
 OPTION(osd_op_queue_mclock_snap_wgt, OPT_DOUBLE, 1.0)
-OPTION(osd_op_queue_mclock_snap_lim, OPT_DOUBLE, 0.001)
+OPTION(osd_op_queue_mclock_snap_lim, OPT_DOUBLE, 0.0)
 OPTION(osd_op_queue_mclock_recov_res, OPT_DOUBLE, 0.0)
 OPTION(osd_op_queue_mclock_recov_wgt, OPT_DOUBLE, 1.0)
-OPTION(osd_op_queue_mclock_recov_lim, OPT_DOUBLE, 0.001)
+OPTION(osd_op_queue_mclock_recov_lim, OPT_DOUBLE, 0.0)
 OPTION(osd_op_queue_mclock_scrub_res, OPT_DOUBLE, 0.0)
 OPTION(osd_op_queue_mclock_scrub_wgt, OPT_DOUBLE, 1.0)
-OPTION(osd_op_queue_mclock_scrub_lim, OPT_DOUBLE, 0.001)
+OPTION(osd_op_queue_mclock_scrub_lim, OPT_DOUBLE, 0.0)
 
 OPTION(osd_ignore_stale_divergent_priors, OPT_BOOL, false) // do not assert on divergent_prior entries which aren't in the log and whose on-disk objects are newer
 
