@@ -52,6 +52,8 @@
 
 #include "gtest/gtest_prod.h"
 
+#define DO_NOT_DELAY_TAG_CALC
+
 
 namespace crimson {
 
