@@ -53,6 +53,7 @@
 #include "gtest/gtest_prod.h"
 
 #define DO_NOT_DELAY_TAG_CALC
+#define DO_DYNAMIC_CLI_INFO_F
 
 
 namespace crimson {
