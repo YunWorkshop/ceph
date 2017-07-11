@@ -1813,6 +1813,7 @@ public:
     // config parameters for which live changes possible
     double upper_lat_limit;
     double lower_lat_limit;
+    double window_throt_avg_limit;
     utime_t latency_window;
 
     uint32_t poll_count;
@@ -1839,13 +1840,17 @@ public:
       std::unique_lock<std::mutex> l(mtx);
       latency_window.set_from_double(window_msec / 1000.0);
     }
-    void set_max_latency(uint32_t max) {
+    void set_max_latency(double max) {
       std::unique_lock<std::mutex> l(mtx);
       upper_lat_limit = max;
     }
-    void set_min_latency(uint32_t min) {
+    void set_min_latency(double min) {
       std::unique_lock<std::mutex> l(mtx);
       lower_lat_limit = min;
+    }
+    void set_window_throt_avg_limit(double limit) {
+      std::unique_lock<std::mutex> l(mtx);
+      window_throt_avg_limit = limit;
     }
     void init(PerfCounters *logger);
     void reset();

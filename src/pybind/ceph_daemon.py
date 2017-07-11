@@ -292,7 +292,7 @@ class DaemonWatcher(object):
                         n = (dump[section_name][stat_name]['sum'] -
                              last_dump[section_name][stat_name]['sum']) \
                             / float(entries)
-                        n *= 1000.0  # Present in milliseconds
+                        n *= 1000000.0  # Present in milliseconds
                     else:
                         n = 0
                 else:

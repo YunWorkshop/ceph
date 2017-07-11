@@ -3509,6 +3509,7 @@ const char **BlueStore::get_tracked_conf_keys() const
     "bluestore_throttle_latency_min",
     "bluestore_throttle_latency_max",
     "bluestore_throttle_latency_window_msec",
+    "bluestore_throttle_window_avg",
     NULL
   };
   return KEYS;
@@ -3593,6 +3594,9 @@ void BlueStore::handle_conf_change(const struct md_config_t *conf,
   }
   if (changed.count("bluestore_throttle_latency_window_msec")) {
     throttle_mgr.set_latency_window(conf->bluestore_throttle_latency_window_msec);
+  }
+  if (changed.count("bluestore_throttle_window_avg")) {
+    throttle_mgr.set_window_throt_avg_limit(conf->bluestore_throttle_window_avg);
   }
 }
 
@@ -11428,11 +11432,14 @@ BlueStore::ThrottleManager::ThrottleManager(CephContext* cct,
     managed_throttle(managed_throttle),
     upper_lat_limit(cct->_conf->bluestore_throttle_latency_max),
     lower_lat_limit(cct->_conf->bluestore_throttle_latency_min),
+    window_throt_avg_limit(cct->_conf->bluestore_throttle_window_avg),
     poll_count(0),
     thresh_count(0),
     zero_submit_count(0)
 {
   set_latency_window(cct->_conf->bluestore_throttle_latency_window_msec);
+  prev_commit_avg = make_pair(0, 0);
+  prev_throt_avg = make_pair(0, 0);
 }
 
 
@@ -11479,14 +11486,14 @@ void BlueStore::ThrottleManager::manage_throttle() {
   pair<uint64_t,uint64_t> this_commit_avg =
     logger->get_tavg_ms(commit_lat_idx);
 
-  assert(this_throt_avg.first >= prev_throt_avg.first);
+  //assert(this_throt_avg.first >= prev_throt_avg.first);
   if (this_throt_avg.first > prev_throt_avg.first) {
     double window_throt_avg =
       (this_throt_avg.second - prev_throt_avg.second) /
       double(this_throt_avg.first - prev_throt_avg.first);
     dout(log_level) << __func__ << " window_throttle_latency:" <<
       window_throt_avg << dendl;
-    if (window_throt_avg < 0.5) {
+    if (window_throt_avg < window_throt_avg_limit) {
       ++zero_submit_count;
       if (zero_submit_count >= thresh_limit) {
 	mod_throttle(ModDir::decrease);
@@ -11502,7 +11509,7 @@ void BlueStore::ThrottleManager::manage_throttle() {
     prev_throt_avg = this_throt_avg;
   }
 
-  assert(this_commit_avg.first >= prev_commit_avg.first);
+  //assert(this_commit_avg.first >= prev_commit_avg.first);
   if (this_commit_avg.first == prev_commit_avg.first) { // no new data
     if (poll_count >= poll_cycles) {
       reset_counters();
