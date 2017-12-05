@@ -57,6 +57,7 @@
 #include "common/PrioritizedQueue.h"
 #include "osd/mClockOpClassQueue.h"
 #include "osd/mClockClientQueue.h"
+#include "osd/mClockPoolQueue.h"
 #include "messages/MOSDOp.h"
 #include "common/EventTrace.h"
 
@@ -1522,6 +1523,7 @@ private:
     weightedpriority,
     mclock_opclass,
     mclock_client,
+    mclock_pool,
   };
   friend std::ostream& operator<<(std::ostream& out, const OSD::io_queue& q);
 
@@ -1619,6 +1621,8 @@ private:
 	  pqueue = std::make_unique<ceph::mClockOpClassQueue>(cct);
 	} else if (opqueue == io_queue::mclock_client) {
 	  pqueue = std::make_unique<ceph::mClockClientQueue>(cct);
+	} else if (opqueue == io_queue::mclock_pool) {
+	  pqueue = std::make_unique<ceph::mClockPoolQueue>(cct);
 	}
       }
     }; // struct ShardData
@@ -1646,6 +1650,11 @@ private:
 	  lock_name, order_lock,
 	  osd->cct->_conf->osd_op_pq_max_tokens_per_priority, 
 	  osd->cct->_conf->osd_op_pq_min_cost, osd->cct, osd->op_queue);
+	if (osd->op_queue == io_queue::mclock_pool) {
+	  ceph::mClockPoolQueue* pq =
+	    dynamic_cast<ceph::mClockPoolQueue *>(one_shard->pqueue.get());
+	  pq->set_osd_service(&(osd->service));
+	}
 	shard_list.push_back(one_shard);
       }
     }
@@ -2142,7 +2151,8 @@ private:
       static io_queue index_lookup[] = { io_queue::prioritized,
 					 io_queue::weightedpriority,
 					 io_queue::mclock_opclass,
-					 io_queue::mclock_client };
+					 io_queue::mclock_client,
+					 io_queue::mclock_pool };
       srand(time(NULL));
       unsigned which = rand() % (sizeof(index_lookup) / sizeof(index_lookup[0]));
       return index_lookup[which];
@@ -2152,6 +2162,8 @@ private:
       return io_queue::mclock_opclass;
     } else if (cct->_conf->osd_op_queue == "mclock_client") {
       return io_queue::mclock_client;
+    } else if (cct->_conf->osd_op_queue == "mclock_pool") {
+      return io_queue::mclock_pool;
     } else {
       // default / catch-all is 'wpq'
       return io_queue::weightedpriority;

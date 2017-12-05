@@ -9986,6 +9986,9 @@ std::ostream& operator<<(std::ostream& out, const OSD::io_queue& q) {
   case OSD::io_queue::mclock_client:
     out << "mclock_client";
     break;
+  case OSD::io_queue::mclock_pool:
+    out << "mclock_pool";
+    break;
   }
   return out;
 }
