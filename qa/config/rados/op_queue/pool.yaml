@@ -2,4 +2,4 @@ overrides:
   ceph:
     conf:
       osd:
-        osd op queue: mclock_opclass
+        osd op queue: mclock_pool
