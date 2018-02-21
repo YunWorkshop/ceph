@@ -3,3 +3,5 @@ overrides:
     conf:
       osd:
         osd op queue: mclock_pool
+      client:
+        objecter mclock service tracker: true
