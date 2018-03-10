@@ -2,6 +2,6 @@ overrides:
   ceph:
     conf:
       osd:
-        osd op queue: mclock_pool
+        osd op queue: debug_random
       client:
         objecter mclock service tracker: true
